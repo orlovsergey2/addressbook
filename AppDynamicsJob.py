@@ -6,15 +6,124 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 
 # Фикстура для инициализации и завершения работы драйвера
-@pytest.fixture(scope="function")
-def driver():
+@pytest.fixture(scope="session")
+def app():
     # Инициализация драйвера
     driver = webdriver.Firefox()
     driver.implicitly_wait(10)
     driver.delete_all_cookies()  # Очистка куки
-    yield driver
-    # Завершение работы драйвера
-    driver.quit()
+
+    # Инициализация Application
+    app = Application(driver)
+
+    # Передача объекта в тест
+    yield app
+
+    # Завершение работы драйвера после всех тестов
+    app.tearDown()
+
+# Класс-менеджер
+class Application:
+    def __init__(self, driver):
+        self.driver = driver
+        self.base_url = "http://localhost/addressbook/addressbook/"
+        self.group = GroupHelper(self)
+        self.contact = ContactHelper(self)
+        self.verificationErrors = []
+
+    def login(self):
+        """Авторизация"""
+        self.driver.get(self.base_url)  # Открываем главную страницу
+        self.type(By.NAME, "user", "admin")
+        self.type(By.NAME, "pass", "secret")
+        self.driver.find_element(By.XPATH, "//input[@value='Login']").click()
+
+        # Проверка успешной авторизации
+        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Logout")))
+
+    def open_home_page(self):
+        """Открытие домашней страницы"""
+        self.driver.get(self.base_url)
+
+    def tearDown(self):
+        """Завершение теста"""
+        self.driver.quit()
+
+    def type(self, locator_type, locator, text):
+        """Вспомогательный метод для ввода текста"""
+        if text is not None:
+            self.driver.find_element(locator_type, locator).clear()
+            self.driver.find_element(locator_type, locator).send_keys(text)
+
+# Класс-помощник для работы с группами
+class GroupHelper:
+    def __init__(self, app):
+        self.app = app
+
+    def open_group_page(self):
+        """Открытие страницы групп"""
+        self.app.driver.get("http://localhost/addressbook/addressbook/group.php")
+
+    def create_group(self, group):
+        """Создание группы"""
+        self.open_group_page()
+        self.app.driver.find_element(By.NAME, "new").click()
+        self.app.driver.find_element(By.NAME, "group_name").send_keys(group.name)
+        self.app.driver.find_element(By.NAME, "group_header").send_keys(group.header)
+        self.app.driver.find_element(By.NAME, "group_footer").send_keys(group.footer)
+        self.app.driver.find_element(By.NAME, "submit").click()
+
+    def return_to_groups_page(self):
+        """Возврат на страницу групп"""
+        self.app.driver.find_element(By.LINK_TEXT, "groups").click()
+
+# Класс-помощник для работы с контактами
+class ContactHelper:
+    def __init__(self, app):
+        self.app = app
+
+    def open_contact_page(self):
+        """Открытие страницы добавления контакта"""
+        self.app.driver.find_element(By.LINK_TEXT, "add new").click()
+
+    def create_contact(self, contact):
+        """Создание контакта"""
+        self.open_contact_page()
+        self.app.type(By.NAME, "firstname", contact.firstname)
+        self.app.type(By.NAME, "middlename", contact.middlename)
+        self.app.type(By.NAME, "lastname", contact.lastname)
+        self.app.type(By.NAME, "nickname", contact.nickname)
+        self.app.type(By.NAME, "title", contact.title)
+        self.app.type(By.NAME, "company", contact.company)
+        self.app.type(By.NAME, "address", contact.address)
+        self.app.type(By.NAME, "home", contact.home)
+        self.app.type(By.NAME, "mobile", contact.mobile)
+        self.app.type(By.NAME, "work", contact.work)
+        self.app.type(By.NAME, "fax", contact.fax)
+        self.app.type(By.NAME, "email", contact.email)
+        self.app.type(By.NAME, "email2", contact.email2)
+        self.app.type(By.NAME, "email3", contact.email3)
+        self.app.type(By.NAME, "homepage", contact.homepage)
+
+        # Выбор даты рождения
+        Select(self.app.driver.find_element(By.NAME, "bday")).select_by_visible_text(contact.bday)
+        Select(self.app.driver.find_element(By.NAME, "bmonth")).select_by_visible_text(contact.bmonth)
+        self.app.type(By.NAME, "byear", contact.byear)
+
+        # Выбор даты годовщины
+        Select(self.app.driver.find_element(By.NAME, "aday")).select_by_visible_text(contact.aday)
+        Select(self.app.driver.find_element(By.NAME, "amonth")).select_by_visible_text(contact.amonth)
+        self.app.type(By.NAME, "ayear", contact.ayear)
+
+        # Подтверждение создания контакта
+        self.app.driver.find_element(By.XPATH, "//div[@id='content']/form/input[20]").click()
+
+# Вспомогательный класс для хранения свойств группы
+class Group:
+    def __init__(self, name=None, header=None, footer=None):
+        self.name = name
+        self.header = header
+        self.footer = footer
 
 # Вспомогательный класс для хранения свойств контакта
 class Contact:
@@ -43,63 +152,13 @@ class Contact:
         self.amonth = amonth
         self.ayear = ayear
 
-# Вспомогательные функции
-def login(driver):
-    """Авторизация"""
-    base_url = "http://localhost/addressbook/addressbook/"
-    driver.get(base_url)  # Открываем главную страницу
-    type(driver, By.NAME, "user", "admin")
-    type(driver, By.NAME, "pass", "secret")
-    driver.find_element(By.XPATH, "//input[@value='Login']").click()
+# Тест, который добавляет контакт и группу
+def test_add_contact_and_group(app):
+    """Тест для добавления контакта и группы"""
+    # Авторизация
+    app.login()
 
-    # Проверка успешной авторизации
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Logout")))
-
-def logout(driver):
-    """Выход из системы"""
-    driver.find_element(By.LINK_TEXT, "Logout").click()
-
-def type(driver, locator_type, locator, text):
-    """Вспомогательный метод для ввода текста"""
-    if text is not None:
-        driver.find_element(locator_type, locator).clear()
-        driver.find_element(locator_type, locator).send_keys(text)
-
-# Тест для добавления группы
-def test_add_group(driver):
-    login(driver)
-    open_group_page(driver)
-    create_group(driver)
-    return_to_groups_page(driver)
-    logout(driver)
-
-def return_to_groups_page(driver):
-    driver.find_element(By.LINK_TEXT, "groups").click()
-
-def create_group(driver):
-    # Инициализация создания группы
-    driver.find_element(By.NAME, "new").click()
-
-    # Заполнение формы группы
-    driver.find_element(By.NAME, "group_name").clear()
-    driver.find_element(By.NAME, "group_name").send_keys("adad")
-
-    driver.find_element(By.NAME, "group_header").clear()
-    driver.find_element(By.NAME, "group_header").send_keys("adada")
-
-    driver.find_element(By.NAME, "group_footer").clear()
-    driver.find_element(By.NAME, "group_footer").send_keys("adada")
-
-    # Подтверждение создания группы
-    driver.find_element(By.NAME, "submit").click()
-
-def open_group_page(driver):
-    base_url = "http://localhost/addressbook/addressbook/"
-    driver.get(base_url + "group.php")  # Открываем group.php
-
-# Тест для добавления контакта
-def test_add_contact(driver):
-    # Инициализация тестовых данных для контакта
+    # Добавление контакта
     contact = Contact(
         firstname="Sergey",
         middlename="Sergeevich",
@@ -123,45 +182,10 @@ def test_add_contact(driver):
         amonth="August",
         ayear="2005"
     )
+    app.contact.create_contact(contact)
 
-    # Выполнение теста
-    login(driver)
-    open_contact_page(driver)
-    create_contact(driver, contact)
-    logout(driver)
-
-def open_contact_page(driver):
-    """Открытие страницы добавления контакта"""
-    driver.find_element(By.LINK_TEXT, "add new").click()
-
-def create_contact(driver, contact):
-    """Создание контакта"""
-    # Заполнение формы контакта
-    type(driver, By.NAME, "firstname", contact.firstname)
-    type(driver, By.NAME, "middlename", contact.middlename)
-    type(driver, By.NAME, "lastname", contact.lastname)
-    type(driver, By.NAME, "nickname", contact.nickname)
-    type(driver, By.NAME, "title", contact.title)
-    type(driver, By.NAME, "company", contact.company)
-    type(driver, By.NAME, "address", contact.address)
-    type(driver, By.NAME, "home", contact.home)
-    type(driver, By.NAME, "mobile", contact.mobile)
-    type(driver, By.NAME, "work", contact.work)
-    type(driver, By.NAME, "fax", contact.fax)
-    type(driver, By.NAME, "email", contact.email)
-    type(driver, By.NAME, "email2", contact.email2)
-    type(driver, By.NAME, "email3", contact.email3)
-    type(driver, By.NAME, "homepage", contact.homepage)
-
-    # Выбор даты рождения
-    Select(driver.find_element(By.NAME, "bday")).select_by_visible_text(contact.bday)
-    Select(driver.find_element(By.NAME, "bmonth")).select_by_visible_text(contact.bmonth)
-    type(driver, By.NAME, "byear", contact.byear)
-
-    # Выбор даты годовщины
-    Select(driver.find_element(By.NAME, "aday")).select_by_visible_text(contact.aday)
-    Select(driver.find_element(By.NAME, "amonth")).select_by_visible_text(contact.amonth)
-    type(driver, By.NAME, "ayear", contact.ayear)
-
-    # Подтверждение создания контакта
-    driver.find_element(By.XPATH, "//div[@id='content']/form/input[20]").click()
+    # Добавление группы
+    app.group.open_group_page()
+    group = Group(name="Test Group", header="Header", footer="Footer")
+    app.group.create_group(group)
+    app.group.return_to_groups_page()
