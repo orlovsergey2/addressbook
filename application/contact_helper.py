@@ -6,6 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 class ContactHelper:
     def __init__(self, app):
         self.app = app
+        driver = self.app.driver
 
     def open_contact_page(self):
         """Открытие страницы добавления контакта"""

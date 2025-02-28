@@ -2,35 +2,32 @@ from .contact_helper import ContactHelper
 from .group_helper import GroupHelper
 from .session import SessionHelper
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 # Класс-менеджер
 class Application:
-    def __init__(self, driver):
-        self.driver = driver
+    def __init__(self):
+        self.By = By
+        self.driver = webdriver.Firefox()
         self.base_url = "http://localhost/addressbook/addressbook/"
         self.group = GroupHelper(self)
         self.contact = ContactHelper(self)
         self.session = SessionHelper(self)
         self.verificationErrors = []
 
-    def is_valid(self, expected_url=None):
-        """Проверяет, что драйвер активен и текущий URL соответствует ожидаемому."""
+    def is_valid(self):
         try:
-            current_url = self.driver.current_url
-            if expected_url is None:
-                expected_url = self.base_url
-            if not current_url.startswith(expected_url):
-                self.driver.get(expected_url)  # Переходим на ожидаемый URL, если текущий URL не совпадает
+            self.driver.current_url
             return True
-        except Exception as e:
-            print(f"Ошибка при проверке валидности сессии: {e}")
+        except:
             return False
     def open_home_page(self):
         """Открытие домашней страницы"""
         self.driver.get(self.base_url)
 
-    def tearDown(self):
+    def tear_down(self):
         """Завершение теста"""
         self.driver.quit()
+
 
     def type(self, locator_type, locator, text):
         """Вспомогательный метод для ввода текста"""
