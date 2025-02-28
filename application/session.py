@@ -16,6 +16,6 @@ class SessionHelper:
         # Проверка успешной авторизации
         WebDriverWait(self.app.driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Logout")))
 
-    def ensure_logout(self):
+    def logout(self):
         """Завершает сеанс пользователя."""
         self.app.driver.find_element(By.LINK_TEXT, "Logout").click()

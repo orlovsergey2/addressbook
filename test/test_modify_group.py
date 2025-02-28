@@ -8,6 +8,3 @@ def test_modify_group_name(app):
         header="New group header",
         footer="New group footer")
     app.group.modify(new_group)
-
-
-

@@ -14,18 +14,18 @@ def test_modify_contact_name(app):
         address="NewAddress",
         home="NewHomePhone",
         mobile="88005553535",
-        work="бездельник",
+        work="раб",
         fax="не имеется",
         email="newemail@example.com",
-        email2="newemail2@example.com",
-        email3="newemail3@example.com",
-        homepage="newhomepage.com",
+        email2="email2@example.com",
+        email3="email3@example.com",
+        homepage="page.com",
         bday="18",
-        bmonth="September",
+        bmonth="November",
         byear="2004",
         aday="14",
         amonth="February",
-        ayear="2001"
+        ayear="2002"
     )
 
     # Модифицируем контакт

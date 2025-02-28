@@ -3,25 +3,23 @@ from selenium import webdriver
 from application.application import Application
 
 @pytest.fixture(scope="session")
-def app(request):
+def app():
     # Инициализация драйвера
-    driver = webdriver.Firefox()  # Или другой браузер
+    driver = webdriver.Firefox()
     driver.implicitly_wait(10)
     driver.delete_all_cookies()  # Очистка куки
 
     # Инициализация Application
-    fixture = Application(driver)
+    app = Application(driver)
 
     # Авторизация перед началом тестов
-    fixture.session.login(username="admin", password="secret")
-
-    # Финализатор для завершения работы
-    def fin():
-        fixture.session.ensure_logout()  # Выход из системы
-        fixture.driver.quit()  # Закрытие браузера
-
-    # Регистрация финализатора
-    request.addfinalizer(fin)
+    app.session.login(username="admin", password="secret")
 
     # Передача объекта в тест
-    return fixture
+    yield app
+
+    # Выход из системы после завершения всех тестов
+    app.session.logout()
+
+    # Завершение работы драйвера после всех тестов
+    app.tearDown()

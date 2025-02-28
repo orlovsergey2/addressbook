@@ -11,6 +11,19 @@ class Application:
         self.contact = ContactHelper(self)
         self.session = SessionHelper(self)
         self.verificationErrors = []
+
+    def is_valid(self, expected_url=None):
+        """Проверяет, что драйвер активен и текущий URL соответствует ожидаемому."""
+        try:
+            current_url = self.driver.current_url
+            if expected_url is None:
+                expected_url = self.base_url
+            if not current_url.startswith(expected_url):
+                self.driver.get(expected_url)  # Переходим на ожидаемый URL, если текущий URL не совпадает
+            return True
+        except Exception as e:
+            print(f"Ошибка при проверке валидности сессии: {e}")
+            return False
     def open_home_page(self):
         """Открытие домашней страницы"""
         self.driver.get(self.base_url)

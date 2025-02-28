@@ -1,3 +1,4 @@
+
 # test/test_del_group.py
 import pytest
 from application.application import Application  # Импортируем класс Application
