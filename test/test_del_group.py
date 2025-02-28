@@ -5,7 +5,6 @@ from selenium.webdriver.common.by import By
 from confest import app
 def test_del_group(app):
     """Тест для удаления группы"""
-    app.login()
     app.group.open_group_page()
     app.driver.find_element(By.NAME, "selected[]").click()  # Выбор группы
     app.driver.find_element(By.NAME, "delete").click()      # Удаление группы
