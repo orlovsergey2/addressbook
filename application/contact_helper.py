@@ -6,11 +6,12 @@ from selenium.webdriver.support import expected_conditions as EC
 class ContactHelper:
     def __init__(self, app):
         self.app = app
-        driver = self.app.driver
+        self.driver = self.app.driver
 
     def open_contact_page(self):
         """Открытие страницы добавления контакта"""
-        self.app.driver.find_element(By.LINK_TEXT, "add new").click()
+        if not (self.driver.current_url.endswith("/addressbook/") and len(self.driver.find_elements(By.LINK_TEXT, "Edit / add address book entry")) > 0):
+            self.app.driver.find_element(By.LINK_TEXT, "add new").click()
 
     def create_contact(self, contact):
         """Создание контакта"""
@@ -45,11 +46,13 @@ class ContactHelper:
         self.app.driver.find_element(By.XPATH, "//div[@id='content']/form/input[20]").click()
 
     def modify_contact(self, contact):
-        """Модифицирует контакт, изменяя только переданные поля."""
-
-        # Выбираем первый контакт для редактирования
-        self.app.driver.find_element(By.NAME, "selected[]").click()
-        self.app.driver.find_element(By.XPATH, "//img[@alt='Edit']").click()
+        driver = self.app.driver
+        By = self.app.By
+        # Ожидаем, пока кнопка редактирования станет доступной
+        edit_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//img[@alt='Edit']"))
+        )
+        edit_button.click()
 
         # Получаем текущие значения полей контакта
         current_data = {
@@ -100,6 +103,19 @@ class ContactHelper:
                 element.clear()
                 element.send_keys(value)
 
+    def delete_first_contact(self):
+        """Удаляет первый контакт."""
+        self.app.driver.find_element(By.NAME, "selected[]").click()
+        self.app.driver.find_element(By.XPATH, "//input[@value='Delete']").click()
+        self.return_to_contact_page()
+
     def return_to_contact_page(self):
-        """Возврат на страницу контактов"""
-        self.app.driver.find_element(By.LINK_TEXT, "home").click()
+        """Возвращается на страницу с контактами."""
+        if not (self.driver.current_url.endswith("/addressbook/") and len(self.driver.find_elements(By.LINK_TEXT, "Last name")) > 0):
+            self.driver.find_element(By.LINK_TEXT, "home").click()
+
+    def count(self):
+        """Возвращает количество контактов."""
+        self.return_to_contact_page()
+        return len(self.app.driver.find_elements(By.NAME, "selected[]"))
+

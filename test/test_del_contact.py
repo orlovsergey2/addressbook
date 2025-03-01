@@ -1,8 +1,9 @@
 import pytest
-from application.application import Application  # Импортируем класс Application
-from selenium.webdriver.common.by import By
+from model.contact import Contact
 from confest import app
+from utils.contact_input import load_contact_from_json
 def test_del_contact(app):
-    """Тест для удаления контакта"""
-    app.driver.find_element(By.NAME, "selected[]").click()  # Выбор группы
-    app.driver.find_element(By.XPATH, "//input[@value='Delete']").click()
+    if app.contact.count() == 0:
+        contact = load_contact_from_json("utils/contact_data.json")
+        app.contact.create_contact(contact)
+    app.contact.delete_first_contact()

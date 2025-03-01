@@ -4,11 +4,11 @@ from selenium.webdriver.common.by import By
 class GroupHelper:
     def __init__(self, app):
         self.app = app
-        driver = self.app.driver
+        self.driver = self.app.driver
 
     def open_group_page(self):
-        """Открытие страницы групп"""
-        self.app.driver.get("http://localhost/addressbook/addressbook/group.php")
+        if not (self.driver.current_url.endswith("/group.php") and len(self.driver.find_elements(By.NAME, "new")) > 0):
+            self.driver.find_element(By.LINK_TEXT, "groups").click()
 
     def create_group(self, group):
         """Создание группы"""
@@ -19,11 +19,14 @@ class GroupHelper:
         self.app.driver.find_element(By.NAME, "group_footer").send_keys(group.footer)
         self.app.driver.find_element(By.NAME, "submit").click()
 
+    def select_first_group(self):
+        """Выбирает первую группу."""
+        self.open_group_page()
+        self.app.driver.find_element(By.NAME, "selected[]").click()
+
     def modify(self, group):
         """Модифицирует группу, изменя только переданные поля."""
-        self.open_group_page()
-        # Выбираем первую группу для редактирования
-        self.app.driver.find_element(By.NAME, "selected[]").click()
+        self.select_first_group()
         self.app.driver.find_element(By.NAME, "edit").click()
 
         # Получаем текущие значения полей группы
@@ -55,4 +58,20 @@ class GroupHelper:
 
     def return_to_groups_page(self):
         """Возврат на страницу групп"""
-        self.app.driver.find_element(By.LINK_TEXT, "groups").click()
+        # Проверяем, открыта ли уже страница групп
+        if not (self.driver.current_url.endswith("/group.php") and len(self.driver.find_elements(By.NAME, "new")) > 0):
+            self.app.driver.find_element(By.LINK_TEXT, "groups").click()
+
+    def delete_first_group(self):
+        """Удаляет первую группу."""
+        self.open_group_page()
+        elements = self.app.driver.find_elements(By.NAME, "selected[]")
+        if elements:
+            elements[0].click()
+            self.app.driver.find_element(By.NAME, "delete").click()
+            self.return_to_groups_page()
+
+    def count(self):
+        """Возвращает количество групп."""
+        self.open_group_page()
+        return len(self.app.driver.find_elements(By.NAME, "selected[]"))
