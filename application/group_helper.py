@@ -60,7 +60,7 @@ class GroupHelper:
         """Возврат на страницу групп"""
         # Проверяем, открыта ли уже страница групп
         if not (self.driver.current_url.endswith("/group.php") and len(self.driver.find_elements(By.NAME, "new")) > 0):
-            self.app.driver.find_element(By.LINK_TEXT, "groups").click()
+            self.app.driver.find_element(By.LINK_TEXT, "home").click()
 
     def delete_first_group(self):
         """Удаляет первую группу."""

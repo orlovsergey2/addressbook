@@ -89,6 +89,7 @@ class ContactHelper:
 
         # Сохраняем изменения
         self.app.driver.find_element(By.NAME, "update").click()
+        self.return_to_contact_page()
 
     def fill_contact_form(self, **fields):
         """Заполняет форму контакта."""
