@@ -1,18 +1,28 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
-
+from model.contact import Contact
 # Класс-помощник для работы с контактами
 class ContactHelper:
     def __init__(self, app):
         self.app = app
         self.driver = self.app.driver
+        self.contact_cache = None
+    def invalidate_cache(self):
+        """Сбрасывает кэш списка контактов."""
+        self.contact_cache = None
 
     def open_contact_page(self):
         """Открытие страницы добавления контакта"""
         if not (self.driver.current_url.endswith("/addressbook/") and len(self.driver.find_elements(By.LINK_TEXT, "Edit / add address book entry")) > 0):
             self.app.driver.find_element(By.LINK_TEXT, "add new").click()
 
+    def select_contact_by_index(self, index):
+        """Выбирает контакт по указанному индексу."""
+        self.open_contact_page()  # Открываем страницу контактов
+        elements = self.app.driver.find_elements(By.NAME, "selected[]")
+        if elements and 0 <= index < len(elements):  # Проверяем, что индекс в допустимых пределах
+            elements[index].click()  # Выбираем контакт по индексу
     def create_contact(self, contact):
         """Создание контакта"""
         self.open_contact_page()
@@ -44,56 +54,55 @@ class ContactHelper:
 
         # Подтверждение создания контакта
         self.app.driver.find_element(By.XPATH, "//div[@id='content']/form/input[20]").click()
+        self.invalidate_cache()
 
-    def modify_contact(self, contact):
-        driver = self.app.driver
-        By = self.app.By
-        # Ожидаем, пока кнопка редактирования станет доступной
-        edit_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, "//img[@alt='Edit']"))
-        )
-        edit_button.click()
+    def modify_contact(self, contact, index):
+        """Модифицирует контакт по индексу."""
+        elements = self.app.driver.find_elements(By.NAME, "selected[]")
+        if elements and index < len(elements):
+            elements[index].click()  # Выбираем контакт по индексу
 
-        # Получаем текущие значения полей контакта
-        current_data = {
-            "firstname": self.app.driver.find_element(By.NAME, "firstname").get_attribute("value"),
-            "middlename": self.app.driver.find_element(By.NAME, "middlename").get_attribute("value"),
-            "lastname": self.app.driver.find_element(By.NAME, "lastname").get_attribute("value"),
-            "nickname": self.app.driver.find_element(By.NAME, "nickname").get_attribute("value"),
-            "title": self.app.driver.find_element(By.NAME, "title").get_attribute("value"),
-            "company": self.app.driver.find_element(By.NAME, "company").get_attribute("value"),
-            "address": self.app.driver.find_element(By.NAME, "address").get_attribute("value"),
-            "home": self.app.driver.find_element(By.NAME, "home").get_attribute("value"),
-            "mobile": self.app.driver.find_element(By.NAME, "mobile").get_attribute("value"),
-            "work": self.app.driver.find_element(By.NAME, "work").get_attribute("value"),
-            "fax": self.app.driver.find_element(By.NAME, "fax").get_attribute("value"),
-            "email": self.app.driver.find_element(By.NAME, "email").get_attribute("value"),
-            "email2": self.app.driver.find_element(By.NAME, "email2").get_attribute("value"),
-            "email3": self.app.driver.find_element(By.NAME, "email3").get_attribute("value"),
-            "homepage": self.app.driver.find_element(By.NAME, "homepage").get_attribute("value"),
-            "bday": Select(self.app.driver.find_element(By.NAME, "bday")).first_selected_option.text,
-            "bmonth": Select(self.app.driver.find_element(By.NAME, "bmonth")).first_selected_option.text,
-            "byear": self.app.driver.find_element(By.NAME, "byear").get_attribute("value"),
-            "aday": Select(self.app.driver.find_element(By.NAME, "aday")).first_selected_option.text,
-            "amonth": Select(self.app.driver.find_element(By.NAME, "amonth")).first_selected_option.text,
-            "ayear": self.app.driver.find_element(By.NAME, "ayear").get_attribute("value"),
-        }
+            # Ожидаем, пока кнопка редактирования станет доступной
+            edit_button = WebDriverWait(self.app.driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, "//img[@alt='Edit']"))
+            )
+            edit_button.click()
 
-        # Если новое значение передано, используем его, иначе оставляем текущее
-        new_data = {}
-        for field in current_data:
-            new_data[field] = getattr(contact, field) if getattr(contact, field) is not None else current_data[field]
+            # Заполняем форму с новыми значениями
+            self.fill_contact_form(
+                firstname=contact.firstname,
+                middlename=contact.middlename,
+                lastname=contact.lastname,
+                nickname=contact.nickname,
+                title=contact.title,
+                company=contact.company,
+                address=contact.address,
+                home=contact.home,
+                mobile=contact.mobile,
+                work=contact.work,
+                fax=contact.fax,
+                email=contact.email,
+                email2=contact.email2,
+                email3=contact.email3,
+                homepage=contact.homepage,
+                bday=contact.bday,
+                bmonth=contact.bmonth,
+                byear=contact.byear,
+                aday=contact.aday,
+                amonth=contact.amonth,
+                ayear=contact.ayear
+            )
 
-        # Заполняем форму с новыми значениями
-        self.fill_contact_form(**new_data)
-
-        # Сохраняем изменения
-        self.app.driver.find_element(By.NAME, "update").click()
-        self.return_to_contact_page()
+            # Сохраняем изменения
+            self.app.driver.find_element(By.NAME, "update").click()
+            self.return_to_contact_page()
+            self.invalidate_cache()
 
     def fill_contact_form(self, **fields):
         """Заполняет форму контакта."""
         for field, value in fields.items():
+            if value is None:
+                continue  # Пропускаем поля со значением None
             if field in ["bday", "bmonth", "aday", "amonth"]:
                 # Для выпадающих списков используем Select
                 select = Select(self.app.driver.find_element(By.NAME, field))
@@ -106,9 +115,17 @@ class ContactHelper:
 
     def delete_first_contact(self):
         """Удаляет первый контакт."""
-        self.app.driver.find_element(By.NAME, "selected[]").click()
-        self.app.driver.find_element(By.XPATH, "//input[@value='Delete']").click()
-        self.return_to_contact_page()
+        self.delete_contact_by_index(0)
+
+    def delete_contact_by_index(self, index):
+        """Удаляет контакт по указанному индексу."""
+        self.return_to_contact_page()  # Открываем страницу контактов
+        elements = self.app.driver.find_elements(By.NAME, "selected[]")
+        if elements and 0 <= index < len(elements):  # Проверяем, что индекс в допустимых пределах
+            elements[index].click()  # Выбираем контакт по индексу
+            self.app.driver.find_element(By.XPATH, "//input[@value='Delete']").click()  # Удаляем контакт
+            self.return_to_contact_page()  # Возвращаемся на страницу контактов
+        self.invalidate_cache()
 
     def return_to_contact_page(self):
         """Возвращается на страницу с контактами."""
@@ -119,4 +136,22 @@ class ContactHelper:
         """Возвращает количество контактов."""
         self.return_to_contact_page()
         return len(self.app.driver.find_elements(By.NAME, "selected[]"))
+
+    contact_cache = None
+
+    def get_contact_list(self):
+        """Возвращает список контактов."""
+        if self.contact_cache is None:
+            self.return_to_contact_page()  # Переходим на страницу контактов
+            self.contact_cache = []
+
+            # Ищем все строки таблицы контактов
+            for element in self.app.driver.find_elements(By.NAME, "entry"):
+                text = element.find_element(By.NAME, "selected[]").get_attribute("title")
+                id = element.find_element(By.NAME, "selected[]").get_attribute("value")
+
+                # Создаем объект Contact и добавляем его в кеш
+                self.contact_cache.append(Contact(firstname=text, id=id))
+
+        return list(self.contact_cache)
 
