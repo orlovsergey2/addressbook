@@ -8,9 +8,6 @@ class ContactHelper:
         self.app = app
         self.driver = self.app.driver
         self.contact_cache = None
-    def invalidate_cache(self):
-        """Сбрасывает кэш списка контактов."""
-        self.contact_cache = None
 
     def open_contact_page(self):
         """Открытие страницы добавления контакта"""
@@ -56,47 +53,47 @@ class ContactHelper:
         self.app.driver.find_element(By.XPATH, "//div[@id='content']/form/input[20]").click()
         self.invalidate_cache()
 
-    def modify_contact(self, contact, index):
+    def modify_contact(self, index, contact):
         """Модифицирует контакт по индексу."""
         elements = self.app.driver.find_elements(By.NAME, "selected[]")
-        if elements and index < len(elements):
-            elements[index].click()  # Выбираем контакт по индексу
 
-            # Ожидаем, пока кнопка редактирования станет доступной
-            edit_button = WebDriverWait(self.app.driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//img[@alt='Edit']"))
-            )
-            edit_button.click()
+        elements[index].click()  # Выбираем контакт по индексу
 
-            # Заполняем форму с новыми значениями
-            self.fill_contact_form(
-                firstname=contact.firstname,
-                middlename=contact.middlename,
-                lastname=contact.lastname,
-                nickname=contact.nickname,
-                title=contact.title,
-                company=contact.company,
-                address=contact.address,
-                home=contact.home,
-                mobile=contact.mobile,
-                work=contact.work,
-                fax=contact.fax,
-                email=contact.email,
-                email2=contact.email2,
-                email3=contact.email3,
-                homepage=contact.homepage,
-                bday=contact.bday,
-                bmonth=contact.bmonth,
-                byear=contact.byear,
-                aday=contact.aday,
-                amonth=contact.amonth,
-                ayear=contact.ayear
-            )
+        # Ожидаем, пока кнопка редактирования станет доступной
+        edit_button = WebDriverWait(self.app.driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//img[@alt='Edit']"))
+        )
+        edit_button.click()
 
-            # Сохраняем изменения
-            self.app.driver.find_element(By.NAME, "update").click()
-            self.return_to_contact_page()
-            self.invalidate_cache()
+        # Заполняем форму с новыми значениями
+        self.fill_contact_form(
+            firstname=contact.firstname,
+            middlename=contact.middlename,
+            lastname=contact.lastname,
+            nickname=contact.nickname,
+            title=contact.title,
+            company=contact.company,
+            address=contact.address,
+            home=contact.home,
+            mobile=contact.mobile,
+            work=contact.work,
+            fax=contact.fax,
+            email=contact.email,
+            email2=contact.email2,
+            email3=contact.email3,
+            homepage=contact.homepage,
+            bday=contact.bday,
+            bmonth=contact.bmonth,
+            byear=contact.byear,
+            aday=contact.aday,
+            amonth=contact.amonth,
+            ayear=contact.ayear
+        )
+
+        # Сохраняем изменения
+        self.app.driver.find_element(By.NAME, "update").click()
+        self.return_to_contact_page()
+        self.invalidate_cache()
 
     def fill_contact_form(self, **fields):
         """Заполняет форму контакта."""
@@ -140,18 +137,20 @@ class ContactHelper:
     contact_cache = None
 
     def get_contact_list(self):
-        """Возвращает список контактов."""
-        if self.contact_cache is None:
-            self.return_to_contact_page()  # Переходим на страницу контактов
+        """Возвращает список контактов с использованием кэширования."""
+        if self.contact_cache is None:  # Если кэш пуст, загружаем данные
             self.contact_cache = []
+            # Логика загрузки списка контактов
+            for row in self.app.driver.find_elements(By.NAME, "entry"):
+                cells = row.find_elements(By.TAG_NAME, "td")
+                lastname = cells[1].text
+                firstname = cells[2].text
+                id = cells[0].find_element(By.NAME, "selected[]").get_attribute("value")
+                self.contact_cache.append(Contact(firstname=firstname, lastname=lastname, id=id))
+        return list(self.contact_cache)  # Возвращаем копию кэша
 
-            # Ищем все строки таблицы контактов
-            for element in self.app.driver.find_elements(By.NAME, "entry"):
-                text = element.find_element(By.NAME, "selected[]").get_attribute("title")
-                id = element.find_element(By.NAME, "selected[]").get_attribute("value")
+    def invalidate_cache(self):
+        """Сбрасывает кэш списка контактов."""
+        self.contact_cache = None
 
-                # Создаем объект Contact и добавляем его в кеш
-                self.contact_cache.append(Contact(firstname=text, id=id))
-
-        return list(self.contact_cache)
 

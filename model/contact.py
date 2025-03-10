@@ -34,7 +34,7 @@ class Contact:
         return (self.id == other.id) and (self.firstname == other.firstname) and (self.lastname == other.lastname)
 
     def id_or_max(self):
-        if self.id is not None:
+        if self.id:
             return int(self.id)
         else:
-            return maxsize
+            return int(maxsize)
