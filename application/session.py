@@ -9,12 +9,15 @@ class SessionHelper:
 
     def is_logged_in_as(self, login):
         """Проверяет, что пользователь авторизован под указанным логином."""
-        return self.driver.find_element(By.XPATH, "//div/div[1]/form/b").text == f"({login})"
+        # Используем относительный путь для поиска элемента <b> внутри формы
+        user_element = self.driver.find_element(By.XPATH, ".//form//b")
+        return user_element.text == f"({login})"
 
     def is_logged_in(self):
         """Проверяет, что пользователь авторизован."""
         try:
-            self.driver.find_element(By.LINK_TEXT, "Logout")
+            # Используем относительный путь для поиска ссылки "Logout"
+            self.driver.find_element(By.XPATH, ".//a[text()='Logout']")
             return True
         except:
             return False
@@ -24,14 +27,18 @@ class SessionHelper:
         self.driver.get(self.app.base_url)  # Открываем главную страницу
         self.app.type(By.NAME, "user", username)  # Вводим логин
         self.app.type(By.NAME, "pass", password)  # Вводим пароль
-        self.driver.find_element(By.XPATH, "//input[@value='Login']").click()  # Кликаем на кнопку входа
+        # Используем относительный путь для поиска кнопки "Login"
+        self.driver.find_element(By.XPATH, ".//input[@value='Login']").click()
 
         # Проверка успешной авторизации
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Logout")))
+        WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, ".//a[text()='Logout']"))
+        )
 
     def logout(self):
         """Завершает сеанс пользователя."""
-        self.driver.find_element(By.LINK_TEXT, "Logout").click()
+        # Используем относительный путь для поиска ссылки "Logout"
+        self.driver.find_element(By.XPATH, ".//a[text()='Logout']").click()
 
     def ensure_logout(self):
         """Гарантирует, что пользователь вышел из системы."""

@@ -1,12 +1,6 @@
-import pytest
-from application.application import Application
-from confest import app
-from model.contact import Contact
-from selenium.webdriver.support.ui import Select
 import random
 import string
-
-# Функция для генерации случайных строк
+from model.contact import Contact
 def random_string(prefix, maxlen):
     symbols = string.ascii_letters + string.digits + string.punctuation + " " * 10
     return prefix + "".join([random.choice(symbols) for i in range(random.randrange(maxlen))])
@@ -57,38 +51,3 @@ def normalize_contact_data(contact):
     if contact.email is not None:
         contact.email = " ".join(contact.email.split()).strip()
     return contact
-
-@pytest.mark.parametrize("contact", testdata_contacts, ids=[repr(x) for x in testdata_contacts])
-def test_add_contact(app, contact):
-    """Тест для добавления контакта."""
-    old_contacts = app.contact.get_contact_list()
-    print(f"Old contacts before addition: {old_contacts}")
-
-    # Создание контакта
-    app.contact.create_contact(contact)
-
-    # Обновление идентификатора контакта
-    contact.id = str(max(int(c.id) for c in old_contacts) + 1)
-
-    # Проверка, что количество контактов увеличилось на 1
-    new_count = app.contact.count()
-    print(f"New count: {new_count}")
-    assert len(old_contacts) + 1 == new_count
-
-    # Получение нового списка контактов
-    new_contacts = app.contact.get_contact_list()
-    print(f"New contacts after addition: {new_contacts}")
-
-    # Добавление созданного контакта в старый список
-    old_contacts.append(contact)
-    print(f"Appended old contacts: {old_contacts}")
-
-    # Нормализация данных перед сравнением
-    old_contacts = [normalize_contact_data(c) for c in old_contacts]
-    new_contacts = [normalize_contact_data(c) for c in new_contacts]
-
-    # Проверка, что списки контактов совпадают
-    assert sorted(old_contacts, key=Contact.id_or_max) == sorted(new_contacts, key=Contact.id_or_max)
-
-    # Возврат на страницу контактов
-    app.contact.return_to_contact_page()
