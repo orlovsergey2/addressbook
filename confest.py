@@ -2,71 +2,66 @@ import pytest
 import json
 import os
 from application.application import Application
-from model.group import Group
-from model.contact import Contact
+from application.db import DbFixture
+
+# Global variables
+target = None
+fixture = None
 
 
-# 1. Конфигурация приложения
+def load_config(file):
+    global target
+    if target is None:
+        config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), file)
+        with open(config_file) as f:
+            target = json.load(f)
+    return target
+
+
 def pytest_addoption(parser):
-    parser.addoption("--config", action="store", default="config.json",
-                     help="Path to config file")
-    parser.addoption("--groups-data", action="store", default="data/groups.json",
-                     help="Path to groups test data")
-    parser.addoption("--contacts-data", action="store", default="data/contacts.json",
-                     help="Path to contacts test data")
+    parser.addoption("--browser", action="store", default="firefox")
+    parser.addoption("--target", action="store", default="target.json")
+    parser.addoption("--baseUrl", action="store", default="http://localhost/addressbook")
 
 
-@pytest.fixture(scope="session")
-def config(request):
-    config_path = request.config.getoption("--config")
-    if not os.path.exists(config_path):
-        config_path = os.path.join(os.path.dirname(__file__), config_path)
-        if not os.path.exists(config_path):
-            pytest.skip(f"Config file not found: {config_path}")
-
-    with open(config_path) as f:
-        return json.load(f)
-
-
-# 2. Фикстура приложения с конфигурацией
 @pytest.fixture
-def app(request, config):
-    fixture = Application(
-        base_url=config["web"]["base_url"],
-        browser=config["web"]["browser"],
-        group_data= config["data/groups.json"],
-        contact_data=config["data/contacts.json"]
+def app(request):
+    global fixture
+    global target
+
+    browser = request.config.getoption("--browser")
+    base_url = request.config.getoption("--baseUrl")
+
+    if target is None:
+        config_file = request.config.getoption("--target")
+        target = load_config(config_file)
+
+    if fixture is None or not fixture.is_valid():
+        fixture = Application(browser=browser, base_url=base_url)
+
+    fixture.session.ensure_login(username=target['username'], password=target['password'])
+    yield fixture
+    fixture.session.ensure_logout()
+
+
+@pytest.fixture
+def group_data():
+    return Group(name="Test Group")
+
+
+@pytest.fixture
+def db(request):
+    db_config = load_config(request.config.getoption("--target"))["db"]
+    dbfixture = DbFixture(
+        host=db_config["host"],
+        name=db_config["name"],
+        user=db_config["user"],
+        password=db_config["password"]
     )
-    fixture.session.ensure_login(
-        config["web"]["username"],
-        config["web"]["password"]
-    )
-
-    def fin():
-        fixture.session.ensure_logout()
-        fixture.tear_down()
-
-    request.addfinalizer(fin)
-
-    return fixture
+    yield dbfixture
+    dbfixture.destroy()
 
 
-# 3. Загрузка тестовых данных и параметризация
-def pytest_generate_tests(metafunc):
-    def load_test_data(file_option, model_class):
-        file_path = metafunc.config.getoption(file_option)
-        if not os.path.exists(file_path):
-            file_path = os.path.join(os.path.dirname(__file__), file_path)
-            if not os.path.exists(file_path):
-                pytest.skip(f"Test data file not found: {file_path}")
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            return [model_class(**item) for item in json.load(f)]
-
-    if "group_data" in metafunc.fixturenames:
-        groups = load_test_data("--groups-data", Group)
-        metafunc.parametrize("group_data", groups, ids=[str(g) for g in groups])
-
-    if "contact_data" in metafunc.fixturenames:
-        contacts = load_test_data("--contacts-data", Contact)
-        metafunc.parametrize("contact_data", contacts, ids=[str(c) for c in contacts])
+@pytest.fixture
+def check_ui(request):
+    return request.config.getoption("--check-ui")
